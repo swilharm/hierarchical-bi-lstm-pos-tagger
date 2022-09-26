@@ -19,15 +19,17 @@ class Encoder(nn.Module):
 
 class POS_Tagger(nn.Module):
 
-    def __init__(self, model_type, embedding_matrix, c_vocab_size, b_vocab_size, freq_max, noise):
+    def __init__(self, model_type, use_polyglot, use_freqbin, embedding_matrix, c_vocab_size, b_vocab_size, freq_max, noise):
         super(POS_Tagger, self).__init__()
         self.model_type = model_type
+        self.use_polyglot = use_polyglot
+        self.use_freqbin = use_freqbin
         self.embedding = nn.Embedding.from_pretrained(embedding_matrix).requires_grad_(True)
         self.characterbased = Encoder(c_vocab_size).to(device)
         self.bytebased = Encoder(b_vocab_size).to(device)
         self.input_size = 0
         if 'w' in model_type:
-            self.input_size += 64
+            self.input_size += 64 if use_polyglot else 128
         if 'c' in model_type:
             self.input_size += 200
         if 'b' in model_type:
@@ -43,7 +45,7 @@ class POS_Tagger(nn.Module):
         if 'w' in self.model_type:
             embedded_words = self.embedding(tokens)
         for i, (char_list, byte_list) in enumerate(zip(char_lists, byte_lists)):
-            embedded = torch.zeros((0), device=device)
+            embedded = torch.zeros((0,), device=device)
             if 'w' in self.model_type:
                 embedded = torch.concat((embedded, embedded_words[i]))
             if 'c' in self.model_type:
@@ -58,5 +60,8 @@ class POS_Tagger(nn.Module):
             concatted = concatted + noise
         bilstm_out, _ = self.bilstm(concatted.view(len(tokens), 1, self.input_size))
         pos_tags = self.pos_tagger(bilstm_out.view(len(tokens), 200))
-        freq = self.freqbin(bilstm_out.view(len(tokens), 200))
-        return pos_tags, freq
+        if self.use_freqbin:
+            freq = self.freqbin(bilstm_out.view(len(tokens), 200))
+            return pos_tags, freq
+        else:
+            return pos_tags, None

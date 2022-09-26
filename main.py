@@ -17,8 +17,8 @@ class Main:
     def __init__(self, language, model_type=('w', 'c'), polyglot=False, freqbin=False):
         with open(f"languages/{language}/{language}-ud-train.conllu") as file:
             self.train_data = parse(file.read())
-        with open(f"languages/{language}/{language}-ud-dev.conllu") as file:
-            self.dev_data = parse(file.read())
+        # with open(f"languages/{language}/{language}-ud-dev.conllu") as file:
+        #     self.dev_data = parse(file.read())
         with open(f"languages/{language}/{language}-ud-test.conllu") as file:
             self.test_data = parse(file.read())
         self.embeds = Embedding.from_glove(f"polyglot/{language}.polyglot.txt")
@@ -67,13 +67,16 @@ class Main:
         for word, frequency in Counter(tokens).items():
             self.freqbin_dict[word] = int(np.log(frequency))
 
-        self.embedding_matrix = torch.FloatTensor(size=(len(self.w2i), 64))
-        for word, index in self.w2i.items():
-            embedding = self.embeds.get(word.lower())
-            if self.polyglot and embedding is not None:
-                self.embedding_matrix[index] = torch.FloatTensor(embedding)
-            else:
-                self.embedding_matrix[index] = torch.rand((1, 64))
+        if self.polyglot:
+            self.embedding_matrix = torch.FloatTensor(size=(len(self.w2i), 64))
+            for word, index in self.w2i.items():
+                embedding = self.embeds.get(word.lower())
+                if self.polyglot and embedding is not None:
+                    self.embedding_matrix[index] = torch.FloatTensor(embedding)
+                else:
+                    self.embedding_matrix[index] = torch.rand((1, 64))
+        else:
+            self.embedding_matrix = torch.rand((len(self.w2i), 128))
 
     def tensorize_data(self, sentence):
         tokens_list = []
@@ -118,8 +121,8 @@ class Main:
 
     def train(self):
 
-        self.model = POS_Tagger(self.model_type, self.embedding_matrix, len(self.c2i),
-                                len(self.b2i), max(self.freqbin_dict.values()) + 1, self.noise
+        self.model = POS_Tagger(self.model_type, self.polyglot, self.freqbin, self.embedding_matrix,
+                                len(self.c2i), len(self.b2i), max(self.freqbin_dict.values()) + 1, self.noise
                                 ).to(device)
 
         criterion = nn.CrossEntropyLoss()
@@ -167,7 +170,7 @@ if __name__ == '__main__':
               {'model_type': ('c', 'b'), 'polyglot': False, 'freqbin': False},
               {'model_type': ('w', 'c'), 'polyglot': False, 'freqbin': False},
               {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': False},
-              {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': True},
+              # {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': True},
               ]
     languages = ['ar', 'bg', 'cs', 'da', 'de', 'en', 'es', 'eu', 'fa', 'fi', 'fr',
                  'he', 'hi', 'hr', 'id', 'it', 'nl', 'no', 'pl', 'pt', 'sl', 'sv']
