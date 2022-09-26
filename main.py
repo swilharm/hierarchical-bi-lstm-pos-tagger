@@ -23,8 +23,8 @@ class Main:
             self.test_data = parse(file.read())
         self.embeds = Embedding.from_glove(f"polyglot/{language}.polyglot.txt")
 
-        self.n_epochs = 1
-        self.report_every = 3
+        self.n_epochs = 20
+        self.report_every = 21
         self.learning_rate = 0.1
         self.noise = 0.2
 

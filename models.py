@@ -43,7 +43,7 @@ class POS_Tagger(nn.Module):
         if 'w' in self.model_type:
             embedded_words = self.embedding(tokens)
         for i, (char_list, byte_list) in enumerate(zip(char_lists, byte_lists)):
-            embedded = torch.zeros((0))
+            embedded = torch.zeros((0), device=device)
             if 'w' in self.model_type:
                 embedded = torch.concat((embedded, embedded_words[i]))
             if 'c' in self.model_type:
