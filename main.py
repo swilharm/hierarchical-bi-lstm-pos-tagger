@@ -17,6 +17,8 @@ class Main:
     def __init__(self, language, model_type=('w', 'c'), polyglot=False, freqbin=False):
         with open(f"languages/{language}/{language}-ud-train.conllu") as file:
             self.train_data = parse(file.read())
+            random.seed(0)
+            self.train_data = random.sample(self.train_data, len(self.train_data))[:5000]
         # with open(f"languages/{language}/{language}-ud-dev.conllu") as file:
         #     self.dev_data = parse(file.read())
         with open(f"languages/{language}/{language}-ud-test.conllu") as file:
