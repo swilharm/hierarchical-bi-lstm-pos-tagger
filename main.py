@@ -139,7 +139,7 @@ class Main:
                 pos_pred, freq_pred = self.model(tokens, char_lists, byte_lists)
                 loss = criterion(pos_pred, pos_gold)
                 if self.freqbin:
-                    loss += criterion(freq_pred, freq_gold)
+                    loss += criterion(freq_pred[:-1], freq_gold[1:])
                 total_loss += loss
                 loss.backward()
                 optimizer.step()
@@ -173,18 +173,17 @@ if __name__ == '__main__':
               # {'model_type': ('c', 'b'), 'polyglot': False, 'freqbin': False},
               # {'model_type': ('w', 'c'), 'polyglot': False, 'freqbin': False},
               {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': False},
-              # {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': True},
+              {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': True},
               ]
     languages = ['ar', 'bg', 'cs', 'da', 'de', 'en', 'es', 'eu', 'fa', 'fi', 'fr',
                  'he', 'hi', 'hr', 'id', 'it', 'nl', 'no', 'pl', 'pt', 'sl', 'sv']
-    results = {model_name(model): {} for model in models}
     with open("results.csv", 'w') as file:
         file.write(f"Language, Model, Accuracy, Time\n")
     with open("results.csv", 'a', 1) as file:
-        for language in languages:
-            print(f"Working with language {language}")
-            for model in models:
-                print(f"\tTraining model {model_name(model)}")
+        for model in models:
+            print(f"\tTraining model {model_name(model)}")
+            for language in languages:
+                print(f"Working with language {language}")
                 pos_tagger = Main(language, **model)
                 pos_tagger.build_indexes()
                 start = time.time()
