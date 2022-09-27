@@ -182,9 +182,9 @@ if __name__ == '__main__':
         file.write(f"Language, Model, Accuracy, Time\n")
     with open("results.csv", 'a', 1) as file:
         for model in models:
-            print(f"\tTraining model {model_name(model)}")
+            print(f"Training model {model_name(model)}")
             for language in languages:
-                print(f"Working with language {language}")
+                print(f"\tWorking with language {language}")
                 pos_tagger = Main(language, **model)
                 pos_tagger.build_indexes()
                 start = time.time()
