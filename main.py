@@ -6,6 +6,7 @@ import numpy as np
 from torch import nn, optim
 from tqdm import tqdm
 import time
+import random
 
 from models import POS_Tagger
 
