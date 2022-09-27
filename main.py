@@ -165,10 +165,11 @@ def model_name(model):
 
 
 if __name__ == '__main__':
-    models = [{'model_type': ('w',), 'polyglot': False, 'freqbin': False},
-              {'model_type': ('c',), 'polyglot': False, 'freqbin': False},
-              {'model_type': ('c', 'b'), 'polyglot': False, 'freqbin': False},
-              {'model_type': ('w', 'c'), 'polyglot': False, 'freqbin': False},
+    models = [
+              # {'model_type': ('w',), 'polyglot': False, 'freqbin': False},
+              # {'model_type': ('c',), 'polyglot': False, 'freqbin': False},
+              # {'model_type': ('c', 'b'), 'polyglot': False, 'freqbin': False},
+              # {'model_type': ('w', 'c'), 'polyglot': False, 'freqbin': False},
               {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': False},
               # {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': True},
               ]
@@ -188,4 +189,4 @@ if __name__ == '__main__':
                 pos_tagger.train()
                 end = time.time()
                 file.write(f"{language}, {model_name(model)}, {pos_tagger.test()}, {end - start}\n")
-                torch.save(pos_tagger.model.state_dict(), f"models/{model_name(model)}_{language}.pt")
+                torch.save(pos_tagger.model.state_dict(), f"models/{language}_{model_name(model)}.pt")
