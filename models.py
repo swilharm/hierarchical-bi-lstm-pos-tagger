@@ -21,6 +21,7 @@ class POS_Tagger(nn.Module):
 
     def __init__(self, model_type, use_polyglot, use_freqbin, embedding_matrix, c_vocab_size, b_vocab_size, freq_max, noise):
         super(POS_Tagger, self).__init__()
+        torch.manual_seed(0)
         self.model_type = model_type
         self.use_polyglot = use_polyglot
         self.use_freqbin = use_freqbin

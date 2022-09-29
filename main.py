@@ -1,12 +1,15 @@
-from conllu import parse
-from polyglot.mapping import Embedding
-from collections import Counter
-import torch
-import numpy as np
-from torch import nn, optim
-from tqdm import tqdm
+import argparse
 import time
 import random
+from collections import Counter
+
+import torch
+from torch import nn, optim
+import numpy as np
+from tqdm import tqdm
+
+from conllu import parse
+from polyglot.mapping import Embedding
 
 from models import POS_Tagger
 
@@ -71,6 +74,7 @@ class Main:
             self.freqbin_dict[word] = int(np.log(frequency))
 
         if self.polyglot:
+            torch.manual_seed(0)
             self.embedding_matrix = torch.FloatTensor(size=(len(self.w2i), 64))
             for word, index in self.w2i.items():
                 embedding = self.embeds.get(word.lower())
@@ -152,10 +156,29 @@ class Main:
                 loss = total_loss / len(self.train_data)
                 print(f"epoch: {epoch}, loss: {loss:.4f}, train acc: {train_accuracy:.4f}, dev acc: {dev_accuracy:.4f}")
 
+    def load_model(self, path):
+
+        self.model = POS_Tagger(self.model_type, self.polyglot, self.freqbin, self.embedding_matrix,
+                                len(self.c2i), len(self.b2i), max(self.freqbin_dict.values()) + 1, self.noise
+                                ).to(device)
+        self.model.load_state_dict(torch.load(path))
+
     def test(self):
         test_accuracy = self.eval(self.test_data)
         print(f"\nTest accuracy: {test_accuracy}")
         return test_accuracy
+
+
+models = [
+    {'model_type': ('w',), 'polyglot': False, 'freqbin': False},
+    {'model_type': ('c',), 'polyglot': False, 'freqbin': False},
+    {'model_type': ('c', 'b'), 'polyglot': False, 'freqbin': False},
+    {'model_type': ('w', 'c'), 'polyglot': False, 'freqbin': False},
+    {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': False},
+    {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': True},
+]
+languages = ['ar', 'bg', 'cs', 'da', 'de', 'en', 'es', 'eu', 'fa', 'fi', 'fr', 'he',
+             'hi', 'hr', 'id', 'it', 'nl', 'no', 'pl', 'pt', 'sl', 'sv']
 
 
 def model_name(model):
@@ -167,28 +190,61 @@ def model_name(model):
     return out
 
 
-if __name__ == '__main__':
-    models = [
-              # {'model_type': ('w',), 'polyglot': False, 'freqbin': False},
-              # {'model_type': ('c',), 'polyglot': False, 'freqbin': False},
-              # {'model_type': ('c', 'b'), 'polyglot': False, 'freqbin': False},
-              # {'model_type': ('w', 'c'), 'polyglot': False, 'freqbin': False},
-              {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': False},
-              {'model_type': ('w', 'c'), 'polyglot': True, 'freqbin': True},
-              ]
-    languages = ['ar', 'bg', 'cs', 'da', 'de', 'en', 'es', 'eu', 'fa', 'fi', 'fr',
-                 'he', 'hi', 'hr', 'id', 'it', 'nl', 'no', 'pl', 'pt', 'sl', 'sv']
-    with open("results.csv", 'w') as file:
+def train():
+    with open("training_results.csv", 'w') as file:
         file.write(f"Language, Model, Accuracy, Time\n")
-    with open("results.csv", 'a', 1) as file:
-        for model in models:
-            print(f"Training model {model_name(model)}")
-            for language in languages:
-                print(f"\tWorking with language {language}")
-                pos_tagger = Main(language, **model)
+    with open("training_results.csv", 'a', 1) as file:
+        for language in languages:
+            print(f"Training language {language}")
+            pos_tagger = Main(language, **model)
+            for model in models:
+                print(f"\twith model {model_name(model)}")
+                pos_tagger.model_type = model['model_type']
+                pos_tagger.polyglot = model['polyglot']
+                pos_tagger.freqbin = model['freqbin']
                 pos_tagger.build_indexes()
                 start = time.time()
                 pos_tagger.train()
                 end = time.time()
                 file.write(f"{language}, {model_name(model)}, {pos_tagger.test()}, {end - start}\n")
                 torch.save(pos_tagger.model.state_dict(), f"models/{language}_{model_name(model)}.pt")
+
+
+def evaluate():
+    with open("inference_results.csv", 'w') as file:
+        file.write(f"Language, Model, Accuracy, Time\n")
+    with open("inference_results.csv", 'a', 1) as file:
+        for language in languages:
+            print(f"Evaluating language {language}")
+            pos_tagger = Main(language, **model)
+            for model in models:
+                print(f"\twith model {model_name(model)}")
+                pos_tagger.model_type = model['model_type']
+                pos_tagger.polyglot = model['polyglot']
+                pos_tagger.freqbin = model['freqbin']
+                pos_tagger.build_indexes()
+                pos_tagger.load_model(f"models/{model_name(model)}_{language}.pt")
+                start = time.time()
+                accuracy = pos_tagger.test()
+                end = time.time()
+                file.write(f"{language}, {model_name(model)}, {accuracy}, {end - start}\n")
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="Pytorch implementation of paper \"Multilingual Part-of-Speech Tagging with "
+                    "Bidirectional Long Short-Term Memory Models and Auxiliary Loss\" (Plank et al., 2016)")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--train', action='store_const', const=True, default=False,
+                       help='Use this option to train all the models', required=False)
+    group.add_argument('--eval', action='store_const', const=True, default=False,
+                       help='Use this option to evaluate all the models', required=False)
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = parse_arguments()
+    if args.train:
+        train()
+    else:
+        evaluate()
