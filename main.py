@@ -17,20 +17,21 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Main:
+    """Main class representing the entire process for one language and configuration"""
 
     def __init__(self, language, model_type=('w', 'c'), polyglot=False, freqbin=False):
         with open(f"languages/{language}/{language}-ud-train.conllu") as file:
             self.train_data = parse(file.read())
             random.seed(0)
             self.train_data = random.sample(self.train_data, len(self.train_data))[:5000]
-        # with open(f"languages/{language}/{language}-ud-dev.conllu") as file:
-        #     self.dev_data = parse(file.read())
+        with open(f"languages/{language}/{language}-ud-dev.conllu") as file:
+            self.dev_data = parse(file.read())
         with open(f"languages/{language}/{language}-ud-test.conllu") as file:
             self.test_data = parse(file.read())
         self.embeds = Embedding.from_glove(f"polyglot/{language}.polyglot.txt")
 
         self.n_epochs = 20
-        self.report_every = 21
+        self.report_every = 1
         self.learning_rate = 0.1
         self.noise = 0.2
 
@@ -39,6 +40,10 @@ class Main:
         self.freqbin = freqbin
 
     def build_indexes(self):
+        """
+        Constructs index dictionaries for words, characters, bytes and labels.
+        Also builds the freqbin dictionary and constructs the word embeddings.
+        """
         self.w2i = {}
         self.c2i = {}
         self.b2i = {}
@@ -86,6 +91,10 @@ class Main:
             self.embedding_matrix = torch.rand((len(self.w2i), 128))
 
     def tensorize_data(self, sentence):
+        """
+        Turns sentence into tensor format
+        :return: tensor of tokens, lists of characters and bytes per word and the expected labels
+        """
         tokens_list = []
         char_lists = []
         byte_lists = []
@@ -114,6 +123,11 @@ class Main:
         return tokens, char_lists, byte_lists, pos_gold, freq_gold
 
     def eval(self, data):
+        """
+        Evaluates the model on the data
+        :param data: The data to evaluate on
+        :return: Accuracy of model on data
+        """
         self.model.eval()
         with torch.no_grad():
             accuracy = 0
@@ -127,6 +141,9 @@ class Main:
         return accuracy / n_tokens
 
     def train(self):
+        """
+        Trains the model with the training data, using the hyperparameters defined in the constructor.
+        """
 
         self.model = POS_Tagger(self.model_type, self.polyglot, self.freqbin, self.embedding_matrix,
                                 len(self.c2i), len(self.b2i), max(self.freqbin_dict.values()) + 1, self.noise
@@ -157,13 +174,19 @@ class Main:
                 print(f"epoch: {epoch}, loss: {loss:.4f}, train acc: {train_accuracy:.4f}, dev acc: {dev_accuracy:.4f}")
 
     def load_model(self, path):
-
+        """
+        Loads model from disk
+        """
         self.model = POS_Tagger(self.model_type, self.polyglot, self.freqbin, self.embedding_matrix,
                                 len(self.c2i), len(self.b2i), max(self.freqbin_dict.values()) + 1, self.noise
                                 ).to(device)
         self.model.load_state_dict(torch.load(path))
 
     def test(self):
+        """
+        Evaluates model on test data
+        :return: Accuracy
+        """
         test_accuracy = self.eval(self.test_data)
         print(f"\nTest accuracy: {test_accuracy}")
         return test_accuracy
@@ -182,6 +205,7 @@ languages = ['ar', 'bg', 'cs', 'da', 'de', 'en', 'es', 'eu', 'fa', 'fi', 'fr', '
 
 
 def model_name(model):
+    """Stringifies the model"""
     out = '+'.join(model['model_type'])
     if model['polyglot']:
         out += '_p'
@@ -191,6 +215,10 @@ def model_name(model):
 
 
 def train():
+    """
+    Trains a model for each language and combination of submodels
+    Stores results in training_results.csv
+    """
     with open("training_results.csv", 'w') as file:
         file.write(f"Language, Model, Accuracy, Time\n")
     with open("training_results.csv", 'a', 1) as file:
@@ -211,6 +239,10 @@ def train():
 
 
 def evaluate():
+    """
+     Loads the trained models from disk and evaluates them on test data
+     Stores results in inference_results.csv
+    """
     with open("inference_results.csv", 'w') as file:
         file.write(f"Language, Model, Accuracy, Time\n")
     with open("inference_results.csv", 'a', 1) as file:
@@ -231,6 +263,9 @@ def evaluate():
 
 
 def parse_arguments():
+    """
+    Parses program parameters
+    """
     parser = argparse.ArgumentParser(
         description="Pytorch implementation of paper \"Multilingual Part-of-Speech Tagging with "
                     "Bidirectional Long Short-Term Memory Models and Auxiliary Loss\" (Plank et al., 2016)")

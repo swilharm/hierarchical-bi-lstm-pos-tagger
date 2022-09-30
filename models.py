@@ -5,6 +5,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Encoder(nn.Module):
+    """
+    Character or Byte-based encoder, applies embedding and runs the input through a BiLSTM. Inner model
+    """
 
     def __init__(self, vocab_size):
         super(Encoder, self).__init__()
@@ -18,6 +21,11 @@ class Encoder(nn.Module):
 
 
 class POS_Tagger(nn.Module):
+    """
+    Outer model embedding the word and/or using the character/byte encoder.
+    Calculates POS tag and freqbin label of the next word
+    Applied Gaussian noise to the embedded inputs
+    """
 
     def __init__(self, model_type, use_polyglot, use_freqbin, embedding_matrix, c_vocab_size, b_vocab_size, freq_max, noise):
         super(POS_Tagger, self).__init__()
